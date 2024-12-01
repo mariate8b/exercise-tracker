@@ -10,9 +10,7 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // Connect to MongoDB
-mongoose.connect("mongodb://localhost/exerciseTracker", { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log("Connected to MongoDB"))
-  .catch(err => console.log(err));
+mongoose.connect("mongodb://localhost/exerciseTracker");
 
 // Define Exercise and User models
 const exerciseSchema = new mongoose.Schema({
