@@ -1,116 +1,109 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const mongoose = require('mongoose');
+const express = require("express");
+const mongoose = require("mongoose");
+const bodyParser = require("body-parser");
+const cors = require("cors");
 
-// Initialize express and body-parser
 const app = express();
+
+// Middleware
+app.use(cors());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
-// Connect to MongoDB
-mongoose.connect('mongodb://localhost/exercise-tracker', { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('MongoDB connected'))
-  .catch(err => console.log(err));
+// MongoDB setup
+mongoose.connect("mongodb://localhost:27017/exercise-tracker", {
+ 
+}).then(() => {
+  console.log("MongoDB connected");
+}).catch(err => console.log(err));
 
-// Define User Schema
+// User Schema
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true }
 });
 
-// Define Exercise Schema
+const User = mongoose.model("User", userSchema);
+
+// Exercise Schema
 const exerciseSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   description: { type: String, required: true },
   duration: { type: Number, required: true },
-  date: { type: String, default: () => new Date().toDateString() }
+  date: { type: Date, default: Date.now }
 });
 
-const User = mongoose.model('User', userSchema);
-const Exercise = mongoose.model('Exercise', exerciseSchema);
+const Exercise = mongoose.model("Exercise", exerciseSchema);
 
-// POST /api/users - Create a new user
-app.post('/api/users', async (req, res) => {
+// POST route to create a new user
+app.post("/api/users", async (req, res) => {
   const { username } = req.body;
-  const newUser = new User({ username });
-  try {
-    const savedUser = await newUser.save();
-    res.json({
-      username: savedUser.username,
-      _id: savedUser._id
-    });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
+  const user = new User({ username });
+  await user.save();
+  res.json(user);
 });
 
-// GET /api/users - Get all users
-app.get('/api/users', async (req, res) => {
-  try {
-    const users = await User.find();
-    res.json(users.map(user => ({
-      username: user.username,
-      _id: user._id
-    })));
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
+// GET route to retrieve all users
+app.get("/api/users", async (req, res) => {
+  const users = await User.find({});
+  res.json(users);
 });
 
-// POST /api/users/:_id/exercises - Add exercise to user
-app.post('/api/users/:_id/exercises', async (req, res) => {
+// POST route to add an exercise to a user
+app.post("/api/users/:_id/exercises", async (req, res) => {
   const { description, duration, date } = req.body;
-  const userId = req.params._id;
+  const { _id } = req.params;
+  
+  const exercise = new Exercise({
+    description,
+    duration,
+    date: date ? new Date(date) : new Date()
+  });
 
-  try {
-    const newExercise = new Exercise({
-      userId,
-      description,
-      duration,
-      date: date || new Date().toDateString()
-    });
+  await exercise.save();
 
-    const savedExercise = await newExercise.save();
-    const user = await User.findById(userId);
-    
-    res.json({
-      username: user.username,
-      _id: user._id,
-      description: savedExercise.description,
-      duration: savedExercise.duration,
-      date: savedExercise.date
-    });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
+  const user = await User.findById(_id);
+  user.exercises = user.exercises || [];
+  user.exercises.push(exercise);
+  await user.save();
+
+  res.json({
+    username: user.username,
+    _id: user._id,
+    description: exercise.description,
+    duration: exercise.duration,
+    date: exercise.date.toDateString()
+  });
 });
 
-// GET /api/users/:_id/logs - Get exercise logs for user
-app.get('/api/users/:_id/logs', async (req, res) => {
+// GET route to retrieve exercise logs for a user
+app.get("/api/users/:_id/logs", async (req, res) => {
   const { _id } = req.params;
   const { from, to, limit } = req.query;
-  
-  try {
-    const filters = { userId: _id };
 
-    if (from) filters.date = { $gte: new Date(from) };
-    if (to) filters.date = { $lte: new Date(to) };
+  const user = await User.findById(_id);
+  const query = Exercise.find({ user: _id });
 
-    const exercises = await Exercise.find(filters).limit(Number(limit));
-
-    const user = await User.findById(_id);
-    res.json({
-      username: user.username,
-      _id: user._id,
-      count: exercises.length,
-      log: exercises.map(exercise => ({
-        description: exercise.description,
-        duration: exercise.duration,
-        date: exercise.date
-      }))
-    });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
+  if (from) {
+    query.where("date").gte(new Date(from));
   }
+  if (to) {
+    query.where("date").lte(new Date(to));
+  }
+  if (limit) {
+    query.limit(parseInt(limit));
+  }
+
+  const exercises = await query.exec();
+
+  res.json({
+    username: user.username,
+    count: exercises.length,
+    _id: user._id,
+    log: exercises.map(exercise => ({
+      description: exercise.description,
+      duration: exercise.duration,
+      date: exercise.date.toDateString()
+    }))
+  });
 });
 
 // Start the server
