@@ -15,9 +15,16 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
 // MongoDB connection
-mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('Connected to MongoDB'))
-  .catch((err) => console.log('MongoDB connection error: ', err));
+mongoose.connect(process.env.MONGO_URI, {
+  // Remove the deprecated options
+  // useNewUrlParser: true, // No longer needed
+  // useUnifiedTopology: true, // No longer needed
+}).then(() => {
+  console.log("Connected to MongoDB");
+}).catch((error) => {
+  console.log("MongoDB connection error:", error);
+});
+
 
 // User and Exercise Models
 const userSchema = new mongoose.Schema({
