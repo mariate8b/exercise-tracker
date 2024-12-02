@@ -12,10 +12,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 // Connect to MongoDB
-mongoose
-  .connect('mongodb://localhost:27017/exercise-tracker', { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('Connected to MongoDB'))
-  .catch((err) => console.log('Error connecting to MongoDB:', err));
+mongoose.connect('mongodb://localhost/exerciseTracker');
+
 
 // POST /api/users - Create a new user
 app.post('/api/users', async (req, res) => {
