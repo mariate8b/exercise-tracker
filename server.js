@@ -1,87 +1,110 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const cors = require('cors');
 const bodyParser = require('body-parser');
-const User = require('./models/User');
+const dotenv = require('dotenv');
 
-// Initialize Express app
+dotenv.config();
+const User = require('./models/user');
+const Exercise = require('./models/exercise');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
+app.use(cors());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 // Connect to MongoDB
-mongoose.connect('mongodb://localhost/exerciseTracker');
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => console.log('Connected to MongoDB'))
+  .catch((err) => console.error('MongoDB connection error:', err));
 
 
-// POST /api/users - Create a new user
+// Routes
+
+// Add a new user
 app.post('/api/users', async (req, res) => {
   const { username } = req.body;
-  if (!username) {
-    return res.status(400).send('Username is required');
+  try {
+    const newUser = await User.create({ username });
+    res.json({ username: newUser.username, _id: newUser._id });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
   }
-  const newUser = new User({ username });
-  await newUser.save();
-  res.json({ username: newUser.username, _id: newUser._id });
 });
 
-// GET /api/users - Get list of all users
+// Get all users
 app.get('/api/users', async (req, res) => {
   const users = await User.find({});
-  res.json(users);
+  res.json(users.map(user => ({ username: user.username, _id: user._id })));
 });
 
-// POST /api/users/:_id/exercises - Add exercise to a user
+// Add an exercise
 app.post('/api/users/:_id/exercises', async (req, res) => {
+  const { _id } = req.params;
   const { description, duration, date } = req.body;
-  const userId = req.params._id;
-  if (!description || !duration) {
-    return res.status(400).send('Description and duration are required');
+
+  try {
+    const user = await User.findById(_id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const exerciseDate = date ? new Date(date).toDateString() : new Date().toDateString();
+    const newExercise = await Exercise.create({
+      userId: _id,
+      description,
+      duration: parseInt(duration),
+      date: exerciseDate,
+    });
+
+    res.json({
+      username: user.username,
+      description: newExercise.description,
+      duration: newExercise.duration,
+      date: newExercise.date,
+      _id: user._id,
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
   }
-  const exercise = { description, duration, date: date || new Date().toDateString() }; // Ensure date format
-  const user = await User.findById(userId);
-  if (!user) {
-    return res.status(404).send('User not found');
-  }
-  user.exercises.push(exercise);
-  await user.save();
-  res.json(user);
 });
 
-// GET /api/users/:_id/logs - Get exercise log for a user
+// Get a user's exercise log
 app.get('/api/users/:_id/logs', async (req, res) => {
-  const userId = req.params._id;
-  const user = await User.findById(userId);
-  if (!user) {
-    return res.status(404).send('User not found');
-  }
-
+  const { _id } = req.params;
   const { from, to, limit } = req.query;
-  let log = user.exercises;
 
-  // Filter by date range (from and to)
-  if (from || to) {
-    log = log.filter(exercise => {
-      const exerciseDate = new Date(exercise.date);
-      return (!from || exerciseDate >= new Date(from)) && (!to || exerciseDate <= new Date(to));
+  try {
+    const user = await User.findById(_id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    let query = { userId: _id };
+    if (from || to) {
+      query.date = {};
+      if (from) query.date.$gte = new Date(from).toDateString();
+      if (to) query.date.$lte = new Date(to).toDateString();
+    }
+
+    const exercises = await Exercise.find(query).limit(parseInt(limit) || 100);
+
+    res.json({
+      username: user.username,
+      count: exercises.length,
+      _id: user._id,
+      log: exercises.map(({ description, duration, date }) => ({
+        description,
+        duration,
+        date,
+      })),
     });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
   }
-
-  // Limit the number of logs returned
-  if (limit) {
-    log = log.slice(0, limit);
-  }
-
-  res.json({
-    username: user.username,
-    count: log.length,
-    _id: user._id,
-    log,
-  });
 });
 
 // Start the server
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
+
