@@ -41,7 +41,7 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
   if (!description || !duration) {
     return res.status(400).send('Description and duration are required');
   }
-  const exercise = { description, duration, date: date || new Date() };
+  const exercise = { description, duration, date: date || new Date().toDateString() }; // Ensure date format
   const user = await User.findById(userId);
   if (!user) {
     return res.status(404).send('User not found');
@@ -78,6 +78,7 @@ app.get('/api/users/:_id/logs', async (req, res) => {
   res.json({
     username: user.username,
     count: log.length,
+    _id: user._id,
     log,
   });
 });
