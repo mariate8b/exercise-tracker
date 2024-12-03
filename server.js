@@ -45,7 +45,7 @@ app.get('/api/users', async (req, res) => {
   res.json(users);
 });
 
-
+// POST /api/users/:_id/exercises - Add an exercise for a user
 // POST /api/users/:_id/exercises - Add an exercise for a user
 app.post('/api/users/:_id/exercises', async (req, res) => {
   const { description, duration, date } = req.body;
@@ -77,13 +77,6 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
   res.json(response);
 });
 
-
-  user.exercises.push(exercise);
-  await user.save();
-
-  // Respond with the updated user object
-  res.json(user);
-});
 
 // GET /api/users/:_id/logs - Get a user's exercise logs
 app.get('/api/users/:_id/logs', async (req, res) => {
