@@ -1,92 +1,113 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const App = () => {
+function App() {
   const [users, setUsers] = useState([]);
-  const [username, setUsername] = useState('');
-  const [description, setDescription] = useState('');
-  const [duration, setDuration] = useState('');
-  const [date, setDate] = useState('');
-  const [selectedUserId, setSelectedUserId] = useState('');
+  const [exercises, setExercises] = useState([]);
+  const [newUser, setNewUser] = useState('');
+  const [exerciseDetails, setExerciseDetails] = useState({
+    description: '',
+    duration: '',
+    date: '',
+  });
 
+  const apiUrl = 'http://localhost:5001'; // Update API base URL to 5001
+
+  // Fetch all users
   useEffect(() => {
-    axios.get('http://localhost:3000/api/users')
+    axios.get(`${apiUrl}/api/users`)
       .then(response => setUsers(response.data))
-      .catch(error => console.error('There was an error!', error));
+      .catch(error => console.error('Error fetching users:', error));
   }, []);
 
-  const handleCreateUser = () => {
-    axios.post('http://localhost:3000/api/users', { username })
-      .then(response => {
-        setUsers([...users, response.data]);
-        setUsername('');
-      })
-      .catch(error => console.error('Error creating user:', error));
+  // Handle user creation
+  const createUser = async () => {
+    try {
+      const response = await axios.post(`${apiUrl}/api/users`, { username: newUser });
+      setUsers([...users, response.data]);
+      setNewUser('');
+    } catch (error) {
+      console.error('Error creating user:', error);
+    }
   };
 
-  const handleAddExercise = (userId) => {
-    const exerciseData = {
-      description,
-      duration,
-      date
-    };
-    axios.post(`http://localhost:3000/api/users/${userId}/exercises`, exerciseData)
-      .then(response => {
-        alert('Exercise added!');
-        setDescription('');
-        setDuration('');
-        setDate('');
-      })
-      .catch(error => console.error('Error adding exercise:', error));
+  // Fetch exercises for a user
+  const getUserExercises = async (userId) => {
+    try {
+      const response = await axios.get(`${apiUrl}/api/users/${userId}/exercises`);
+      setExercises(response.data);
+    } catch (error) {
+      console.error('Error fetching exercises:', error);
+    }
+  };
+
+  // Handle exercise creation
+  const createExercise = async (userId) => {
+    try {
+      const response = await axios.post(`${apiUrl}/api/users/${userId}/exercises`, exerciseDetails);
+      setExercises([...exercises, response.data]);
+      setExerciseDetails({ description: '', duration: '', date: '' });
+    } catch (error) {
+      console.error('Error creating exercise:', error);
+    }
   };
 
   return (
     <div>
       <h1>Exercise Tracker</h1>
-      <h2>Create a new user</h2>
-      <input
-        type="text"
-        placeholder="Username"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-      />
-      <button onClick={handleCreateUser}>Create User</button>
 
-      <h2>Users List</h2>
-      <ul>
-        {users.map(user => (
-          <li key={user._id}>
-            {user.username}
-            <button onClick={() => setSelectedUserId(user._id)}>Add Exercise</button>
-          </li>
-        ))}
-      </ul>
+      <div>
+        <h2>Create New User</h2>
+        <input
+          type="text"
+          value={newUser}
+          onChange={(e) => setNewUser(e.target.value)}
+        />
+        <button onClick={createUser}>Create User</button>
+      </div>
 
-      {selectedUserId && (
-        <div>
-          <h3>Add Exercise</h3>
-          <input
-            type="text"
-            placeholder="Description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-          <input
-            type="number"
-            placeholder="Duration (minutes)"
-            value={duration}
-            onChange={(e) => setDuration(e.target.value)}
-          />
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
-          <button onClick={() => handleAddExercise(selectedUserId)}>Add Exercise</button>
-        </div>
-      )}
+      <div>
+        <h2>Users</h2>
+        <ul>
+          {users.map(user => (
+            <li key={user._id}>
+              {user.username}
+              <button onClick={() => getUserExercises(user._id)}>View Exercises</button>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div>
+        <h2>Exercises</h2>
+        <input
+          type="text"
+          placeholder="Description"
+          value={exerciseDetails.description}
+          onChange={(e) => setExerciseDetails({ ...exerciseDetails, description: e.target.value })}
+        />
+        <input
+          type="number"
+          placeholder="Duration (in minutes)"
+          value={exerciseDetails.duration}
+          onChange={(e) => setExerciseDetails({ ...exerciseDetails, duration: e.target.value })}
+        />
+        <input
+          type="date"
+          value={exerciseDetails.date}
+          onChange={(e) => setExerciseDetails({ ...exerciseDetails, date: e.target.value })}
+        />
+        <button onClick={() => createExercise(users[0]._id)}>Add Exercise</button>
+
+        <ul>
+          {exercises.map(exercise => (
+            <li key={exercise._id}>{exercise.description} - {exercise.duration} min</li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
-};
+}
 
 export default App;
+
