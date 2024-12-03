@@ -45,29 +45,27 @@ app.get('/api/users', async (req, res) => {
 });
 
 // POST /api/users/:_id/exercises - Add an exercise for a user
+// Route to add an exercise for a user
 app.post('/api/users/:_id/exercises', async (req, res) => {
-  const { description, duration, date } = req.body;
-  const userId = req.params._id;
-
-  const user = await User.findById(userId);
-  if (!user) return res.status(404).send('User not found');
-
-  const exercise = {
-    description,
-    duration,
-    date: date ? new Date(date) : new Date(),
-  };
-
-  user.exercises.push(exercise);
-  await user.save();
-  res.json({
-    username: user.username,
-    _id: user._id,
-    description: exercise.description,
-    duration: exercise.duration,
-    date: exercise.date.toDateString(),
+    const { description, duration, date } = req.body;
+    const userId = req.params._id;
+    const user = await User.findById(userId);
+  
+    if (!user) return res.status(404).send('User not found');
+  
+    const exercise = {
+      description,
+      duration,
+      date: date ? new Date(date) : new Date(),
+    };
+  
+    user.exercises.push(exercise);
+    await user.save();
+    
+    // Return updated user object with added exercise fields
+    res.json(user);
   });
-});
+  
 
 // GET /api/users/:_id/logs - Get a user's exercise logs
 app.get('/api/users/:_id/logs', async (req, res) => {
