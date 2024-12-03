@@ -2,6 +2,8 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+require('dotenv').config();
+
 
 const app = express();
 const port = 5001;
@@ -12,7 +14,9 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 // MongoDB Connection
-mongoose.connect('mongodb://localhost/exercise-tracker', { useNewUrlParser: true, useUnifiedTopology: true });
+mongoose.connect(process.env.MONGO_URI);
+
+
 
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true },
@@ -47,25 +51,38 @@ app.get('/api/users', async (req, res) => {
 // POST /api/users/:_id/exercises - Add an exercise for a user
 // Route to add an exercise for a user
 app.post('/api/users/:_id/exercises', async (req, res) => {
-    const { description, duration, date } = req.body;
-    const userId = req.params._id;
-    const user = await User.findById(userId);
-  
-    if (!user) return res.status(404).send('User not found');
-  
-    const exercise = {
-      description,
-      duration,
-      date: date ? new Date(date) : new Date(),
-    };
-  
-    user.exercises.push(exercise);
-    await user.save();
-    
-    // Return updated user object with added exercise fields
-    res.json(user);
+  const { description, duration, date } = req.body;
+  const userId = req.params._id;
+
+  if (!description || !duration) {
+    return res.status(400).send('Description and duration are required');
+  }
+
+  const user = await User.findById(userId);
+
+  if (!user) return res.status(404).send('User not found');
+
+  const exercise = {
+    description,
+    duration: parseInt(duration),
+    date: date ? new Date(date) : new Date(),
+  };
+
+  user.exercises.push(exercise);
+  await user.save();
+
+  // Return the user object with only the required fields and the latest added exercise
+  res.json({
+    username: user.username,
+    _id: user._id,
+    description: exercise.description,
+    duration: exercise.duration,
+    date: exercise.date.toDateString(), // Format the date
   });
+});
+
   
+
 
 // GET /api/users/:_id/logs - Get a user's exercise logs
 app.get('/api/users/:_id/logs', async (req, res) => {
