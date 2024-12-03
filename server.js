@@ -45,6 +45,7 @@ app.get('/api/users', async (req, res) => {
   res.json(users);
 });
 
+
 // POST /api/users/:_id/exercises - Add an exercise for a user
 app.post('/api/users/:_id/exercises', async (req, res) => {
   const { description, duration, date } = req.body;
@@ -58,6 +59,24 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
     duration,
     date: date ? new Date(date) : new Date(),
   };
+
+  user.exercises.push(exercise);
+  await user.save();
+
+  // Respond with the updated user object, ensuring the exercises are correctly formatted
+  const response = {
+    username: user.username,
+    _id: user._id,
+    exercises: user.exercises.map(ex => ({
+      description: ex.description,
+      duration: ex.duration,
+      date: ex.date.toDateString(),  // Format the date as a string
+    })),
+  };
+
+  res.json(response);
+});
+
 
   user.exercises.push(exercise);
   await user.save();
