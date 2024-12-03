@@ -49,8 +49,8 @@ app.get('/api/users', async (req, res) => {
 app.post('/api/users/:_id/exercises', async (req, res) => {
   const { description, duration, date } = req.body;
   const userId = req.params._id;
-
   const user = await User.findById(userId);
+
   if (!user) return res.status(404).send('User not found');
 
   const exercise = {
@@ -61,13 +61,9 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
 
   user.exercises.push(exercise);
   await user.save();
-  res.json({
-    username: user.username,
-    _id: user._id,
-    description: exercise.description,
-    duration: exercise.duration,
-    date: exercise.date.toDateString(),
-  });
+
+  // Respond with the updated user object
+  res.json(user);
 });
 
 // GET /api/users/:_id/logs - Get a user's exercise logs
