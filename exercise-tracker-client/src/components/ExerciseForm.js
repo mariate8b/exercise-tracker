@@ -9,10 +9,22 @@ const ExerciseForm = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    axios.post(`http://localhost:3000/api/users/${userId}/exercises`, { description, duration, date })
-      .then(response => alert('Exercise logged!'))
-      .catch(error => console.error(error));
+    
+    const exerciseData = {
+      description,
+      duration,
+      date: date || new Date().toISOString(), // Use current date if none provided
+    };
+  
+    axios.post(`http://localhost:3000/api/users/${userId}/exercises`, exerciseData)
+      .then(response => {
+        // handle success
+      })
+      .catch(error => {
+        console.error("Error:", error.response.data);
+      });
   };
+  
 
   return (
     <form onSubmit={handleSubmit}>
